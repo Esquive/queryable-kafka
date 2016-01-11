@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit
 import kafka.api.FetchResponsePartitionData
 import kafka.api.PartitionFetchInfo
 import kafka.common.TopicAndPartition
+import kafka.message.MessageAndOffset
 import kafka.metrics.KafkaMetricsGroup
 import org.apache.kafka.common.errors.{NotLeaderForPartitionException, UnknownTopicOrPartitionException}
 
@@ -129,6 +130,19 @@ class DelayedFetch(delayMs: Long,
 
     val fetchPartitionData = logReadResults.mapValues(result =>
       FetchResponsePartitionData(result.errorCode, result.hw, result.info.messageSet))
+
+    val dataIt = fetchPartitionData.get(new TopicAndPartition("pcmd", 0)).iterator
+    var value:FetchResponsePartitionData = null
+    var message:MessageAndOffset = null
+    if(dataIt.hasNext){
+      value = dataIt.next()
+      val messageIt = value.messages.iterator
+      if(messageIt.hasNext){
+        message = messageIt.next()
+        val clear = new String(message.message.buffer.array())
+        val pos = clear.charAt(0)
+      }
+    }
 
     responseCallback(fetchPartitionData)
   }

@@ -1,6 +1,6 @@
 <!DOCTYPE import-control PUBLIC
-"-//Puppy Crawl//DTD Import Control 1.1//EN"
-"http://www.puppycrawl.com/dtds/import_control_1_1.dtd">
+        "-//Puppy Crawl//DTD Import Control 1.1//EN"
+        "http://www.puppycrawl.com/dtds/import_control_1_1.dtd">
 <!--
 // Licensed to the Apache Software Foundation (ASF) under one or more
 // contributor license agreements.  See the NOTICE file distributed with
@@ -20,50 +20,51 @@
 
 <import-control pkg="kafka">
 
-  <!-- THINK HARD ABOUT THE LAYERING OF THE PROJECT BEFORE CHANGING THIS FILE -->
+    <!-- THINK HARD ABOUT THE LAYERING OF THE PROJECT BEFORE CHANGING THIS FILE -->
 
-  <!-- common library dependencies -->
-  <allow pkg="java" />
-  <allow pkg="scala" />
-  <allow pkg="javax.management" />
-  <allow pkg="org.slf4j" />
-  <allow pkg="org.junit" />
-  <allow pkg="org.easymock" />
-  <allow pkg="java.security" />
-  <allow pkg="javax.net.ssl" />
-  <allow pkg="javax.security" />
+    <!-- common library dependencies -->
+    <allow pkg="java"/>
+    <allow pkg="scala"/>
+    <allow pkg="javax.management"/>
+    <allow pkg="org.slf4j"/>
+    <allow pkg="org.junit"/>
+    <allow pkg="org.easymock"/>
+    <allow pkg="java.security"/>
+    <allow pkg="javax.net.ssl"/>
+    <allow pkg="javax.security"/>
 
-  <allow pkg="kafka.common" />
-  <allow pkg="kafka.utils" />
-  <allow pkg="kafka.serializer" />
-  <allow pkg="org.apache.kafka.common" />
+    <allow pkg="kafka.common"/>
+    <allow pkg="kafka.utils"/>
+    <allow pkg="kafka.serializer"/>
+    <allow pkg="org.apache.kafka.common"/>
 
-  <subpackage name="javaapi">
-    <subpackage name="consumer">
-      <allow pkg="kafka.consumer" />
+    <subpackage name="javaapi">
+        <subpackage name="consumer">
+            <allow pkg="kafka.consumer"/>
+        </subpackage>
+
+        <subpackage name="message">
+            <allow pkg="kafka.message"/>
+        </subpackage>
+
+        <subpackage name="producer">
+            <allow pkg="kafka.producer"/>
+        </subpackage>
     </subpackage>
 
-    <subpackage name="message">
-      <allow pkg="kafka.message" />
+    <subpackage name="tools">
+        <allow pkg="kafka.javaapi"/>
+        <allow pkg="kafka.producer"/>
+        <allow pkg="kafka.consumer"/>
+        <allow pkg="joptsimple"/>
     </subpackage>
 
-    <subpackage name="producer">
-      <allow pkg="kafka.producer" />
+    <subpackage name="examples">
+        <allow pkg="org.apache.kafka.clients"/>
+        <allow pkg="kafka.api"/>
+        <allow pkg="kafka.javaapi"/>
+        <allow pkg="kafka.message"/>
+        <allow pkg="kafka.consumer"/>
     </subpackage>
-  </subpackage>
-
-  <subpackage name="tools">
-    <allow pkg="kafka.javaapi" />
-    <allow pkg="kafka.producer" />
-    <allow pkg="kafka.consumer" />
-    <allow pkg="joptsimple" />
-  </subpackage>
-
-  <subpackage name="examples">
-    <allow pkg="org.apache.kafka.clients" />
-    <allow pkg="kafka.api" />
-    <allow pkg="kafka.javaapi" />
-    <allow pkg="kafka.message" />
-  </subpackage>
 
 </import-control>

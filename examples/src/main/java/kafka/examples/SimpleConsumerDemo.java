@@ -62,6 +62,9 @@ public class SimpleConsumerDemo {
             KafkaProperties.KAFKA_PRODUCER_BUFFER_SIZE,
             KafkaProperties.CLIENT_ID);
 
+//        JoinGroupRequest joinGroupRequest = new JoinGroupRequest("sample",1000,KafkaProperties.CLIENT_ID,"consumer",)
+
+
         System.out.println("Testing single fetch");
         FetchRequest req = new FetchRequestBuilder()
             .clientId(KafkaProperties.CLIENT_ID)

@@ -190,7 +190,8 @@ class ConsumerConfig private (val props: VerifiableProperties) extends ZKConfig(
 
   /** Select a strategy for assigning partitions to consumer streams. Possible values: range, roundrobin */
   val partitionAssignmentStrategy = props.getString("partition.assignment.strategy", DefaultPartitionAssignmentStrategy)
-  
+
+
   validate(this)
 }
 

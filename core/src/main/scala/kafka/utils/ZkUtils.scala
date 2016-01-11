@@ -66,6 +66,8 @@ object ZkUtils {
   val IsrChangeNotificationPath = "/isr_change_notification"
   val EntityConfigPath = "/config"
   val EntityConfigChangesPath = "/config/changes"
+
+  val SqlQueriesPath = "/sql"
   
   def apply(zkUrl: String, sessionTimeout: Int, connectionTimeout: Int, isZkSecurityEnabled: Boolean): ZkUtils = {
     val (zkClient, zkConnection) = createZkClientAndConnection(zkUrl, sessionTimeout, connectionTimeout)
@@ -873,6 +875,11 @@ class ZKGroupTopicDirs(group: String, topic: String) extends ZKGroupDirs(group) 
   def consumerOwnerDir = consumerGroupOwnersDir + "/" + topic
 }
 
+class ZKSqlQueryDirs(val consumerId: String) {
+  def sqlQueryDir = SqlQueriesPath
+  def consumerDir = sqlQueryDir + "/" + consumerId
+//  def topicsDirs = topicsAndQueries.map(x => {consumerDir + "/" + x._1})
+}
 
 class ZKConfig(props: VerifiableProperties) {
   /** ZK host string */
