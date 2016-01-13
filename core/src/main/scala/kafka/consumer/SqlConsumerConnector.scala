@@ -118,13 +118,16 @@ private[kafka] class SqlConsumerConnector(val config: ConsumerConfig,
   }
 
   def createMessageStreams(topicCountMap: Map[String,Int], topicsAndQueries:Map[String,String]): Map[String, List[KafkaStream[Array[Byte],Array[Byte]]]] =
-    createMessageStreams(topicCountMap, new DefaultDecoder(), new DefaultDecoder())
+    createMessageStreams(topicCountMap, new DefaultDecoder(), new DefaultDecoder(), topicsAndQueries)
 
   def createMessageStreams[K,V](topicCountMap: Map[String,Int], keyDecoder: Decoder[K], valueDecoder: Decoder[V],topicsAndQueries:Map[String,String])
   : Map[String, List[KafkaStream[K,V]]] = {
     if (messageStreamCreated.getAndSet(true))
       throw new MessageStreamsExistException(this.getClass.getSimpleName +
         " can create message streams at most once",null)
+    topicsAndQueries.foreach {
+      topicAndQuery => config.topicsAndQueries.put(topicAndQuery._1,topicAndQuery._2)
+    }
     consume(topicCountMap, keyDecoder, valueDecoder,topicsAndQueries:Map[String,String])
   }
 

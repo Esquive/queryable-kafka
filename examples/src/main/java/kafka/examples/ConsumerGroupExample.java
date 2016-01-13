@@ -87,14 +87,15 @@ public class ConsumerGroupExample {
         String topic = args[2];
         int threads = Integer.parseInt(args[3]);
 
-        ConsumerGroupExample example = new ConsumerGroupExample(zooKeeper, groupId, topic);
+        final ConsumerGroupExample example = new ConsumerGroupExample(zooKeeper, groupId, topic);
         example.run(threads);
 
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException ie) {
 
-        }
-        example.shutdown();
+        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+            @Override
+            public void run() {
+                example.shutdown();
+            }
+        }));
     }
 }

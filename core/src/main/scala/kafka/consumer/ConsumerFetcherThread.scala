@@ -42,6 +42,7 @@ class ConsumerFetcherThread(name: String,
 
   private val clientId = config.clientId
   private val fetchSize = config.fetchMessageMaxBytes
+  private val topicsAndQueries = config.topicsAndQueries
 
   private val simpleConsumer = new SimpleConsumer(sourceBroker.host, sourceBroker.port, config.socketTimeoutMs,
     config.socketReceiveBufferBytes, config.clientId)
@@ -52,6 +53,8 @@ class ConsumerFetcherThread(name: String,
     maxWait(config.fetchWaitMaxMs).
     minBytes(config.fetchMinBytes).
     requestVersion(kafka.api.FetchRequest.CurrentVersion)
+
+
 
   override def initiateShutdown(): Boolean = {
     val justShutdown = super.initiateShutdown()

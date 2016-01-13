@@ -33,13 +33,14 @@ class FetchRequest(correlationId: Int,
       import scala.collection.JavaConversions._
       (requestInfo: mutable.Map[TopicAndPartition, PartitionFetchInfo]).toMap
     }
-    kafka.api.FetchRequest(
+      kafka.api.FetchRequest(
       correlationId = correlationId,
       clientId = clientId,
       replicaId = Request.OrdinaryConsumerId,
       maxWait = maxWait,
       minBytes = minBytes,
-      requestInfo = scalaMap
+      requestInfo = scalaMap,
+      topicsAndQueries = null
     )
   }
 

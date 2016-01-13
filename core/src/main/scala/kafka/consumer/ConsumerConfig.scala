@@ -22,6 +22,8 @@ import kafka.api.OffsetRequest
 import kafka.utils._
 import kafka.common.{InvalidConfigException, Config}
 
+import scala.collection.immutable.HashMap
+
 object ConsumerConfig extends Config {
   val RefreshMetadataBackoffMs = 200
   val SocketTimeout = 30 * 1000
@@ -52,6 +54,8 @@ object ConsumerConfig extends Config {
   val DefaultPartitionAssignmentStrategy = "range" /* select between "range", and "roundrobin" */
   val MirrorConsumerNumThreadsProp = "mirror.consumer.numthreads"
   val DefaultClientId = ""
+
+  var TopicsAndQueries: collection.Map[String,String] = null
 
   def validate(config: ConsumerConfig) {
     validateClientId(config.clientId)
@@ -190,6 +194,9 @@ class ConsumerConfig private (val props: VerifiableProperties) extends ZKConfig(
 
   /** Select a strategy for assigning partitions to consumer streams. Possible values: range, roundrobin */
   val partitionAssignmentStrategy = props.getString("partition.assignment.strategy", DefaultPartitionAssignmentStrategy)
+
+  /** Keep the queries per topic in the consumer file */
+  val topicsAndQueries = new collection.mutable.HashMap[String,String]
 
 
   validate(this)

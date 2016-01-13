@@ -455,6 +455,7 @@ class KafkaApis(val requestChannel: RequestChannel,
         fetchRequest.replicaId,
         fetchRequest.minBytes,
         authorizedRequestInfo,
+        fetchRequest.topicsAndQueries,
         sendResponseCallback)
     }
   }

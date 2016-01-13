@@ -30,6 +30,7 @@ object CompressionFactory {
     compressionCodec match {
       case DefaultCompressionCodec => new GZIPOutputStream(stream)
       case GZIPCompressionCodec => new GZIPOutputStream(stream)
+      case NoCompressionCodec => stream
       case SnappyCompressionCodec => 
         import org.xerial.snappy.SnappyOutputStream
         new SnappyOutputStream(stream)
@@ -44,6 +45,7 @@ object CompressionFactory {
     compressionCodec match {
       case DefaultCompressionCodec => new GZIPInputStream(stream)
       case GZIPCompressionCodec => new GZIPInputStream(stream)
+      case NoCompressionCodec => stream
       case SnappyCompressionCodec => 
         import org.xerial.snappy.SnappyInputStream
         new SnappyInputStream(stream)
