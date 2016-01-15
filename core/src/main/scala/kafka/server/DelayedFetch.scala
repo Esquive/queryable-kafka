@@ -153,11 +153,12 @@ class DelayedFetch(delayMs: Long,
       FetchResponsePartitionData(result.errorCode, result.hw, result.info.messageSet)
     )
 
-    //TODO: Apply the Query
-    FetchRequestQueryApplier.applyQueriesToResponse(Map("pcmd"->"select * where *"),fetchPartitionData,responseCallback)
+    if (fetchMetadata.topicsAndQueries != null) {
+      FetchRequestQueryApplier.applyQueriesToResponse(fetchMetadata.topicsAndQueries, fetchPartitionData, responseCallback)
+    } else {
+      responseCallback(fetchPartitionData)
+    }
 
-    //TODO: When using the queries comming from the clients uncomment the next line
-    //responseCallback(fetchPartitionData)
   }
 }
 

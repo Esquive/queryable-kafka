@@ -195,10 +195,6 @@ class ConsumerConfig private (val props: VerifiableProperties) extends ZKConfig(
   /** Select a strategy for assigning partitions to consumer streams. Possible values: range, roundrobin */
   val partitionAssignmentStrategy = props.getString("partition.assignment.strategy", DefaultPartitionAssignmentStrategy)
 
-  /** Keep the queries per topic in the consumer file */
-  val topicsAndQueries = new collection.mutable.HashMap[String,String]
-
-
   validate(this)
 }
 

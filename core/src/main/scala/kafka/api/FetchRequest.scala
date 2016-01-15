@@ -60,6 +60,7 @@ object FetchRequest {
     var queryMap: Map[String, String] = null
     if (supportsQueries) {
       val queryCount = buffer.getInt()
+      //TODO: Out of curriosity see why here we are 1-based
       val queries = (1 to queryCount).map(_ => {
         (readShortString(buffer), readShortString(buffer))
       })
@@ -76,7 +77,7 @@ case class FetchRequest(versionId: Short = FetchRequest.CurrentVersion,
                         maxWait: Int = FetchRequest.DefaultMaxWait,
                         minBytes: Int = FetchRequest.DefaultMinBytes,
                         requestInfo: Map[TopicAndPartition, PartitionFetchInfo],
-                        topicsAndQueries: Map[String, String])
+                        topicsAndQueries: collection.Map[String, String])
   extends RequestOrResponse(Some(ApiKeys.FETCH.id)) {
 
   /**
@@ -179,6 +180,7 @@ case class FetchRequest(versionId: Short = FetchRequest.CurrentVersion,
 
     var querySize = 0
     if(supportsQueries){
+        querySize += 4 /* Count of the queries */
         topicsAndQueries.foreach(x=>{
         querySize += shortStringLength(x._1)
         querySize += shortStringLength(x._2)})
@@ -254,15 +256,11 @@ class FetchRequestBuilder() {
   private var maxWait = FetchRequest.DefaultMaxWait
   private var minBytes = FetchRequest.DefaultMinBytes
   private val requestMap = new collection.mutable.HashMap[TopicAndPartition, PartitionFetchInfo]
-  private var topicsAndQueries = new collection.mutable.HashMap[String, String]
+  private var topicsAndQueries: collection.Map[String,String] = null
 
   def addFetch(topic: String, partition: Int, offset: Long, fetchSize: Int) = {
     requestMap.put(TopicAndPartition(topic, partition), PartitionFetchInfo(offset, fetchSize))
     this
-  }
-
-  def addTopicAndQuery(topic: String, query: String) = {
-    topicsAndQueries.put(topic, query)
   }
 
   def clientId(clientId: String): FetchRequestBuilder = {
@@ -270,7 +268,7 @@ class FetchRequestBuilder() {
     this
   }
 
-  def topicsAndQueries(topicsAndQueries: collection.mutable.HashMap[String, String]): Unit = {
+  def topicsAndQueries(topicsAndQueries: collection.Map[String, String]): FetchRequestBuilder = {
     this.topicsAndQueries = topicsAndQueries
     this
   }
@@ -299,9 +297,8 @@ class FetchRequestBuilder() {
   }
 
   def build() = {
-    val fetchRequest = FetchRequest(versionId, correlationId.getAndIncrement, clientId, replicaId, maxWait, minBytes, requestMap.toMap, if (topicsAndQueries.isEmpty) null else topicsAndQueries.toMap)
+    val fetchRequest = FetchRequest(versionId, correlationId.getAndIncrement, clientId, replicaId, maxWait, minBytes, requestMap.toMap, topicsAndQueries)
     requestMap.clear()
-    topicsAndQueries.clear()
     fetchRequest
   }
 }

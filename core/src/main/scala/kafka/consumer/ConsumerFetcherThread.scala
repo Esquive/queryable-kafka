@@ -1,19 +1,19 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+  * Licensed to the Apache Software Foundation (ASF) under one or more
+  * contributor license agreements.  See the NOTICE file distributed with
+  * this work for additional information regarding copyright ownership.
+  * The ASF licenses this file to You under the Apache License, Version 2.0
+  * (the "License"); you may not use this file except in compliance with
+  * the License.  You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
 
 package kafka.consumer
 
@@ -30,19 +30,34 @@ class ConsumerFetcherThread(name: String,
                             val config: ConsumerConfig,
                             sourceBroker: BrokerEndPoint,
                             partitionMap: Map[TopicAndPartition, PartitionTopicInfo],
-                            val consumerFetcherManager: ConsumerFetcherManager)
-        extends AbstractFetcherThread(name = name,
-                                      clientId = config.clientId,
-                                      sourceBroker = sourceBroker,
-                                      fetchBackOffMs = config.refreshLeaderBackoffMs,
-                                      isInterruptible = true) {
+                            val consumerFetcherManager: ConsumerFetcherManager,
+                            val topicsAndQueries: collection.Map[String, String])
+  extends AbstractFetcherThread(name = name,
+    clientId = config.clientId,
+    sourceBroker = sourceBroker,
+    fetchBackOffMs = config.refreshLeaderBackoffMs,
+    isInterruptible = true) {
+
+  def this(name: String,
+           config: ConsumerConfig,
+           sourceBroker: BrokerEndPoint,
+           partitionMap: Map[TopicAndPartition, PartitionTopicInfo],
+           consumerFetcherManager: ConsumerFetcherManager
+          ) {
+    this(name = name,
+      config = config,
+      sourceBroker = sourceBroker,
+      partitionMap = partitionMap,
+      consumerFetcherManager = consumerFetcherManager,
+      topicsAndQueries = null)
+  }
+
 
   type REQ = FetchRequest
   type PD = PartitionData
 
   private val clientId = config.clientId
   private val fetchSize = config.fetchMessageMaxBytes
-  private val topicsAndQueries = config.topicsAndQueries
 
   private val simpleConsumer = new SimpleConsumer(sourceBroker.host, sourceBroker.port, config.socketTimeoutMs,
     config.socketReceiveBufferBytes, config.clientId)
@@ -52,7 +67,9 @@ class ConsumerFetcherThread(name: String,
     replicaId(Request.OrdinaryConsumerId).
     maxWait(config.fetchWaitMaxMs).
     minBytes(config.fetchMinBytes).
+    topicsAndQueries( topicsAndQueries).
     requestVersion(kafka.api.FetchRequest.CurrentVersion)
+
 
 
 
@@ -73,7 +90,7 @@ class ConsumerFetcherThread(name: String,
     val pti = partitionMap(topicAndPartition)
     if (pti.getFetchOffset != fetchOffset)
       throw new RuntimeException("Offset doesn't match for partition [%s,%d] pti offset: %d fetch offset: %d"
-                                .format(topicAndPartition.topic, topicAndPartition.partition, pti.getFetchOffset, fetchOffset))
+        .format(topicAndPartition.topic, topicAndPartition.partition, pti.getFetchOffset, fetchOffset))
     pti.enqueue(partitionData.underlying.messages.asInstanceOf[ByteBufferMessageSet])
   }
 
@@ -118,15 +135,20 @@ object ConsumerFetcherThread {
 
   class FetchRequest(val underlying: kafka.api.FetchRequest) extends AbstractFetcherThread.FetchRequest {
     def isEmpty: Boolean = underlying.requestInfo.isEmpty
+
     def offset(topicAndPartition: TopicAndPartition): Long = underlying.requestInfo(topicAndPartition).offset
   }
 
   class PartitionData(val underlying: FetchResponsePartitionData) extends AbstractFetcherThread.PartitionData {
     def errorCode: Short = underlying.error
+
     def toByteBufferMessageSet: ByteBufferMessageSet = underlying.messages.asInstanceOf[ByteBufferMessageSet]
+
     def highWatermark: Long = underlying.hw
+
     def exception: Option[Throwable] =
       if (errorCode == ErrorMapping.NoError) None else Some(ErrorMapping.exceptionFor(errorCode))
 
   }
+
 }

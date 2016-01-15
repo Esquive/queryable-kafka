@@ -486,11 +486,11 @@ class ReplicaManager(val config: KafkaConfig,
       val fetchPartitionData = logReadResults.mapValues(result =>
         FetchResponsePartitionData(result.errorCode, result.hw, result.info.messageSet))
 
-      //TODO: Apply the Query
-      FetchRequestQueryApplier.applyQueriesToResponse(Map("pcmd"->"select * where *"),fetchPartitionData,responseCallback)
-
-      //TODO: Uncomment the line when the queries are provided by the client
-      //responseCallback(fetchPartitionData)
+      if(topicsAndQueries != null) {
+        FetchRequestQueryApplier.applyQueriesToResponse(topicsAndQueries, fetchPartitionData, responseCallback)
+      } else {
+        responseCallback(fetchPartitionData)
+      }
     } else {
       // construct the fetch results from the read results
       val fetchPartitionStatus = logReadResults.map { case (topicAndPartition, result) =>

@@ -18,7 +18,7 @@ package kafka.producer.async
 
 import kafka.utils.VerifiableProperties
 
-trait AsyncProducerConfig {
+trait   AsyncProducerConfig {
   val props: VerifiableProperties
 
   /* maximum time, in milliseconds, for buffering data on the producer queue */

@@ -35,6 +35,7 @@ private[kafka] object SqlConsumerConnector {
 }
 
 private[kafka] class SqlConsumerConnector(val config: ConsumerConfig,
+                                          val topicsAndQueries: collection.Map[String,String],
                                           val enableFetcher: Boolean) // for testing only
   extends ConsumerConnector with Logging with KafkaMetricsGroup {
 
@@ -55,7 +56,7 @@ private[kafka] class SqlConsumerConnector(val config: ConsumerConfig,
   private var offsetsChannel: BlockingChannel = null
   private val offsetsChannelLock = new Object
 
-  private var wildcardTopicWatcher: ZookeeperTopicEventWatcher = null
+  private val wildcardTopicWatcher: ZookeeperTopicEventWatcher = null
   private var consumerRebalanceListener: ConsumerRebalanceListener = null
 
   // useful for tracking migration of consumers to store offsets in kafka
@@ -104,7 +105,8 @@ private[kafka] class SqlConsumerConnector(val config: ConsumerConfig,
   KafkaMetricsReporter.startReporters(config.props)
   AppInfo.registerInfo()
 
-  def this(config: ConsumerConfig) = this(config, true)
+  def this(config: ConsumerConfig,topicsAndQueries: collection.Map[String,String]) =
+    this(config = config, topicsAndQueries = topicsAndQueries , enableFetcher = true)
 
   def createMessageStreams(topicCountMap: Map[String,Int]): Map[String, List[KafkaStream[Array[Byte],Array[Byte]]]] =
     createMessageStreams(topicCountMap, new DefaultDecoder(), new DefaultDecoder())
@@ -114,23 +116,8 @@ private[kafka] class SqlConsumerConnector(val config: ConsumerConfig,
     if (messageStreamCreated.getAndSet(true))
       throw new MessageStreamsExistException(this.getClass.getSimpleName +
         " can create message streams at most once",null)
-    consume(topicCountMap, keyDecoder, valueDecoder,topicCountMap.map(x=>(x._1,"*")))
+    consume(topicCountMap, keyDecoder, valueDecoder)
   }
-
-  def createMessageStreams(topicCountMap: Map[String,Int], topicsAndQueries:Map[String,String]): Map[String, List[KafkaStream[Array[Byte],Array[Byte]]]] =
-    createMessageStreams(topicCountMap, new DefaultDecoder(), new DefaultDecoder(), topicsAndQueries)
-
-  def createMessageStreams[K,V](topicCountMap: Map[String,Int], keyDecoder: Decoder[K], valueDecoder: Decoder[V],topicsAndQueries:Map[String,String])
-  : Map[String, List[KafkaStream[K,V]]] = {
-    if (messageStreamCreated.getAndSet(true))
-      throw new MessageStreamsExistException(this.getClass.getSimpleName +
-        " can create message streams at most once",null)
-    topicsAndQueries.foreach {
-      topicAndQuery => config.topicsAndQueries.put(topicAndQuery._1,topicAndQuery._2)
-    }
-    consume(topicCountMap, keyDecoder, valueDecoder,topicsAndQueries:Map[String,String])
-  }
-
 
   def createMessageStreamsByFilter[K,V](topicFilter: TopicFilter,
                                         numStreams: Int,
@@ -151,7 +138,7 @@ private[kafka] class SqlConsumerConnector(val config: ConsumerConfig,
 
   private def createFetcher() {
     if (enableFetcher)
-      fetcher = Some(new ConsumerFetcherManager(consumerIdString, config, zkUtils))
+      fetcher = Some(new ConsumerFetcherManager(consumerIdString, config, zkUtils,topicsAndQueries))
   }
 
   private def connectZk() {
@@ -207,7 +194,7 @@ private[kafka] class SqlConsumerConnector(val config: ConsumerConfig,
     }
   }
 
-  def consume[K, V](topicCountMap: scala.collection.Map[String,Int], keyDecoder: Decoder[K], valueDecoder: Decoder[V],topicsAndQueries:Map[String,String])
+  def consume[K, V](topicCountMap: scala.collection.Map[String,Int], keyDecoder: Decoder[K], valueDecoder: Decoder[V])
   : Map[String,List[KafkaStream[K,V]]] = {
     debug("entering consume ")
     if (topicCountMap == null)
@@ -232,7 +219,7 @@ private[kafka] class SqlConsumerConnector(val config: ConsumerConfig,
     registerConsumerInZK(dirs, consumerIdString, topicCount)
     registerConsumerSqlQueries(sqlDirs,consumerIdString, topicsAndQueries)
 
-    reinitializeConsumer(topicCount,queuesAndStreams,topicsAndQueries)
+    reinitializeConsumer(topicCount,queuesAndStreams)
 
     loadBalancerListener.kafkaMessageAndMetadataStreams.asInstanceOf[Map[String, List[KafkaStream[K,V]]]]
   }
@@ -873,8 +860,7 @@ private[kafka] class SqlConsumerConnector(val config: ConsumerConfig,
   }
 
   private def reinitializeConsumer[K,V]( topicCount: TopicCount,
-                                         queuesAndStreams: List[(LinkedBlockingQueue[FetchedDataChunk],KafkaStream[K,V])],
-                                         topicsAndQueries: Map[String,String]) = {
+                                         queuesAndStreams: List[(LinkedBlockingQueue[FetchedDataChunk],KafkaStream[K,V])]) = {
 
     val dirs = new ZKGroupDirs(config.groupId)
     val sqlDirs = new ZKSqlQueryDirs(config.clientId)
@@ -889,7 +875,7 @@ private[kafka] class SqlConsumerConnector(val config: ConsumerConfig,
     // create listener for session expired event if not exist yet
     if (sessionExpirationListener == null)
       sessionExpirationListener = new ZKSessionExpireListener(
-        dirs,sqlDirs, consumerIdString, topicCount, loadBalancerListener,topicsAndQueries)
+        dirs,sqlDirs, consumerIdString, topicCount, loadBalancerListener,this.topicsAndQueries)
 
     // create listener for topic partition change event if not exist yet
     if (topicPartitionChangeListener == null)

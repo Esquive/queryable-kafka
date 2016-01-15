@@ -18,7 +18,7 @@ package kafka.examples;
 
 import kafka.consumer.ConsumerConfig;
 import kafka.consumer.KafkaStream;
-import kafka.javaapi.consumer.ConsumerConnector;
+import kafka.javaapi.consumer.SqlConsumerConnector;
 
 import java.util.HashMap;
 import java.util.List;
@@ -29,13 +29,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class ConsumerGroupExample {
-    private final ConsumerConnector consumer;
+    private final SqlConsumerConnector consumer;
     private final String topic;
     private ExecutorService executor;
 
     public ConsumerGroupExample(String zookeeper, String groupId, String topic) {
-        consumer = kafka.consumer.Consumer.createJavaConsumerConnector(
-                createConsumerConfig(zookeeper, groupId));
+        Map<String, String> topicsAndQueries = new HashMap<>();
+        topicsAndQueries.put("pcmd", "select 0,4 where 0=11");
+        consumer = (SqlConsumerConnector) kafka.consumer.Consumer.createSqlJavaConsumerConnector(
+                createConsumerConfig(zookeeper, groupId), topicsAndQueries);
         this.topic = topic;
     }
 
@@ -54,6 +56,9 @@ public class ConsumerGroupExample {
     public void run(int numThreads) {
         Map<String, Integer> topicCountMap = new HashMap<String, Integer>();
         topicCountMap.put(topic, new Integer(numThreads));
+
+
+
         Map<String, List<KafkaStream<byte[], byte[]>>> consumerMap = consumer.createMessageStreams(topicCountMap);
         List<KafkaStream<byte[], byte[]>> streams = consumerMap.get(topic);
 

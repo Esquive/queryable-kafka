@@ -26,13 +26,38 @@ class FetchRequest(correlationId: Int,
                    clientId: String,
                    maxWait: Int,
                    minBytes: Int,
-                   requestInfo: java.util.Map[TopicAndPartition, PartitionFetchInfo]) {
+                   requestInfo: java.util.Map[TopicAndPartition, PartitionFetchInfo],
+                   topicsAndQueries: java.util.Map[String,String]) {
+
+  def this(correlationId: Int,
+           clientId: String,
+           maxWait: Int,
+           minBytes: Int,
+           requestInfo: java.util.Map[TopicAndPartition, PartitionFetchInfo]
+           ) {
+
+    this(correlationId = correlationId,
+    clientId = clientId,
+    maxWait = maxWait,
+    minBytes = minBytes,
+    requestInfo = requestInfo,
+    topicsAndQueries = null)
+  }
 
   val underlying = {
     val scalaMap: Map[TopicAndPartition, PartitionFetchInfo] = {
       import scala.collection.JavaConversions._
       (requestInfo: mutable.Map[TopicAndPartition, PartitionFetchInfo]).toMap
     }
+
+    var queriesMap: Map[String, String] = null
+    if(topicsAndQueries != null) {
+      queriesMap = {
+        import scala.collection.JavaConversions._
+        (topicsAndQueries: mutable.Map[String, String]).toMap
+      }
+    }
+
       kafka.api.FetchRequest(
       correlationId = correlationId,
       clientId = clientId,
@@ -40,7 +65,7 @@ class FetchRequest(correlationId: Int,
       maxWait = maxWait,
       minBytes = minBytes,
       requestInfo = scalaMap,
-      topicsAndQueries = null
+      topicsAndQueries = queriesMap
     )
   }
 
