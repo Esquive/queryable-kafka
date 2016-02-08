@@ -111,7 +111,7 @@ object FetchRequestQueryApplier {
     val columns = line.split(";")
 
 
-      columns(queryPlan.conditionColumn)
+      //columns(queryPlan.conditionColumn)
 
     //Check the criteria
 
@@ -127,10 +127,15 @@ object FetchRequestQueryApplier {
 
     if(keep)
     {
-          for(i <- 0 to queryPlan.columns.length){
-             result.append(columns(i))
-             if( !(i == queryPlan.columns.length)) { result.append(";")}
-          }
+//          for(i <- 0 until queryPlan.columns.length){
+//             result.append(columns(i))
+//             if( !(i == queryPlan.columns.length) ) { result.append(";")}
+//          }
+
+      for(i<-queryPlan.columns){
+        result.append(columns(i)).append(";")
+      }
+
     }
 
     return keep

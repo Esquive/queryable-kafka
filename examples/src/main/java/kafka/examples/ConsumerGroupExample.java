@@ -35,7 +35,7 @@ public class ConsumerGroupExample {
 
     public ConsumerGroupExample(String zookeeper, String groupId, String topic) {
         Map<String, String> topicsAndQueries = new HashMap<>();
-        topicsAndQueries.put("pcmd", "select 0,4 where 0=11");
+        topicsAndQueries.put("pcmd", "select 0,1 where 0=16");
         consumer = (SqlConsumerConnector) kafka.consumer.Consumer.createSqlJavaConsumerConnector(
                 createConsumerConfig(zookeeper, groupId), topicsAndQueries);
         this.topic = topic;
@@ -78,7 +78,8 @@ public class ConsumerGroupExample {
     private static ConsumerConfig createConsumerConfig(String zookeeper, String groupId) {
         Properties props = new Properties();
         props.put("zookeeper.connect", zookeeper);
-        props.put("group.id", groupId);
+        props.put("group.id", "testGroup");
+        props.put("client.id", "testClient");
         props.put("zookeeper.session.timeout.ms", "6000");
         props.put("zookeeper.sync.time.ms", "200");
         props.put("auto.commit.interval.ms", "1000");
