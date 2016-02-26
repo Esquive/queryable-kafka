@@ -127,7 +127,7 @@ object Consumer extends Logging {
     *  @param config  at the minimum, need to specify the groupid of the consumer and the zookeeper
     *                 connection string zookeeper.connect.
     */
-  def createSqlConsumerConnector(config: ConsumerConfig, topicsAndQueries:Map[String,String]): ConsumerConnector = {
+  def createSqlConsumerConnector(config: ConsumerConfig, topicsAndQueries: Map[String,String]): ConsumerConnector = {
     val consumerConnect = new SqlConsumerConnector(config, topicsAndQueries)
     consumerConnect
   }
@@ -138,7 +138,7 @@ object Consumer extends Logging {
     *  @param config  at the minimum, need to specify the groupid of the consumer and the zookeeper
     *                 connection string zookeeper.connect.
     */
-  def createSqlJavaConsumerConnector(config: ConsumerConfig,topicsAndQueries:java.util.Map[String,String]): kafka.javaapi.consumer.ConsumerConnector = {
+  def createSqlJavaConsumerConnector(config: ConsumerConfig, topicsAndQueries: java.util.Map[String,String]): kafka.javaapi.consumer.ConsumerConnector = {
     val consumerConnect = new kafka.javaapi.consumer.SqlConsumerConnector(config,topicsAndQueries)
     consumerConnect
   }
