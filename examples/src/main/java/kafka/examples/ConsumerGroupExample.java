@@ -37,8 +37,10 @@ public class ConsumerGroupExample {
         Map<String, String> topicsAndQueries = new HashMap<>();
         topicsAndQueries.put("pcmd", "select 0,1 where 0=16");
         consumer = (SqlConsumerConnector) kafka.consumer.Consumer.createSqlJavaConsumerConnector(
-                createConsumerConfig(zookeeper, groupId), topicsAndQueries);
-        this.topic = topic;
+                createConsumerConfig(zookeeper, groupId), null);
+//                createConsumerConfig(zookeeper, groupId), topicsAndQueries);
+        this.topic = "testKey";
+//        this.topic = topic;
     }
 
     public void shutdown() {

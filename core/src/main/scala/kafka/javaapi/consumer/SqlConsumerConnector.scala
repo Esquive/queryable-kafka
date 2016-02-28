@@ -66,9 +66,12 @@ private[kafka] class SqlConsumerConnector(val config: ConsumerConfig,
                                           val enableFetcher: Boolean) // for testing only
   extends ConsumerConnector {
 
-  val scalaQueryMap: Map[String, String] = {
-    import JavaConversions._
-    Map.empty[String, String] ++ (topicsAndQueries.asInstanceOf[java.util.Map[String, String]]: mutable.Map[String, String])
+  var scalaQueryMap: Map[String, String] = null
+    if(topicsAndQueries != null){
+     scalaQueryMap = {
+      import JavaConversions._
+      Map.empty[String, String] ++ (topicsAndQueries.asInstanceOf[java.util.Map[String, String]]: mutable.Map[String, String])
+    }
   }
 
   private val underlying = new kafka.consumer.SqlConsumerConnector(config, scalaQueryMap, enableFetcher)
