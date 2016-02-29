@@ -26,6 +26,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 
 import java.util.Properties;
 //import java.util.UUID;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 public class Producer extends Thread {
@@ -39,8 +40,8 @@ public class Producer extends Thread {
         props.put("client.id", "DemoProducer");
 //        props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip");
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        producer = new KafkaProducer<String, String>(props);
+        props.put("value.serializer", "org.apache.kafka.common.serialization.StringGzipSerializer");
+        producer = new KafkaProducer<>(props);
         this.topic = topic;
         this.isAsync = isAsync;
     }
@@ -48,8 +49,10 @@ public class Producer extends Thread {
     public void run() {
         String messageNo = null;
         while (true) {
-            messageNo = "Thisisthekey";
-            String messageStr = "Message_" + messageNo;
+            messageNo = UUID.randomUUID().toString();
+            String messageStr = "HELLO WOLRD THIS IS THE MESSAGE";
+            messageStr += messageStr;
+            messageStr += messageStr;
             long startTime = System.currentTimeMillis();
             if (isAsync) { // Send asynchronously
 //                producer.send(new ProducerRecord<String, String>(topic,
@@ -69,7 +72,7 @@ public class Producer extends Thread {
             }
 //            ++messageNo;
             try {
-                Thread.sleep(60000);
+                Thread.sleep(1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

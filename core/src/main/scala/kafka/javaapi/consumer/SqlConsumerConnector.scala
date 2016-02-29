@@ -106,8 +106,8 @@ private[kafka] class SqlConsumerConnector(val config: ConsumerConfig,
     ret
   }
 
-  def createMessageStreams(topicCountMap: java.util.Map[String,java.lang.Integer]): java.util.Map[String,java.util.List[KafkaStream[Array[Byte],Array[Byte]]]] =
-    createMessageStreams(topicCountMap, new DefaultDecoder(), new DefaultDecoder())
+  def createGzipMessageStreams(topicCountMap: java.util.Map[String,java.lang.Integer]): java.util.Map[String,java.util.List[KafkaStream[String,String]]] =
+    createMessageStreams(topicCountMap, new StringDecoder(), new StringGzipDecoder())
 
   def createMessageStreamsByFilter[K, V](topicFilter: TopicFilter, numStreams: Int, keyDecoder: Decoder[K], valueDecoder: Decoder[V]) = {
     null
@@ -137,4 +137,7 @@ private[kafka] class SqlConsumerConnector(val config: ConsumerConfig,
     underlying.shutdown
   }
 
+  def createMessageStreams(topicCountMap: util.Map[String, Integer]): util.Map[String, util.List[KafkaStream[Array[Byte], Array[Byte]]]] = {
+    createMessageStreams(topicCountMap, new DefaultDecoder(), new DefaultDecoder())
+  }
 }

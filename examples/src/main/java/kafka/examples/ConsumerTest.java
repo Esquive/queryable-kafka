@@ -29,7 +29,7 @@ public class ConsumerTest implements Runnable {
     }
 
     public void run() {
-        ConsumerIterator<byte[], byte[]> it = stream.iterator();
+        ConsumerIterator<String, String> it = stream.iterator();
         while (true) {
             if (it.hasNext()) {
                 System.out.println("Thread " + threadNumber + ": " + new String(it.next().message()));

@@ -17,6 +17,9 @@
 
 package kafka.serializer
 
+import java.io.ByteArrayOutputStream
+import java.util.zip.GZIPOutputStream
+
 import kafka.utils.VerifiableProperties
 
 /**
@@ -55,4 +58,21 @@ class StringEncoder(props: VerifiableProperties = null) extends Encoder[String] 
       null
     else
       s.getBytes(encoding)
+}
+
+class StringGzipEncoder(props: VerifiableProperties = null) extends Encoder[String] {
+  val encoding = if(props == null) "UTF8" else props.getString("serializer.encoding", "UTF8")
+
+  override def toBytes(s: String): Array[Byte] =
+    if(s == null)
+      null
+    else {
+      val bytes = new ByteArrayOutputStream()
+      val out = new GZIPOutputStream(bytes)
+      out.write(s.getBytes(encoding))
+      out.flush()
+      out.close()
+
+      return bytes.toByteArray()
+    }
 }

@@ -17,7 +17,12 @@
 
 package kafka.serializer
 
+import java.io.ByteArrayInputStream
+import java.nio.ByteBuffer
+import java.util.zip.GZIPInputStream
+
 import kafka.utils.VerifiableProperties
+import org.apache.kafka.common.record.ByteBufferOutputStream
 
 /**
  * A decoder is a method of turning byte arrays into objects.
@@ -48,5 +53,42 @@ class StringDecoder(props: VerifiableProperties = null) extends Decoder[String] 
 
   def fromBytes(bytes: Array[Byte]): String = {
     new String(bytes, encoding)
+  }
+}
+
+class StringGzipDecoder(props: VerifiableProperties = null) extends Decoder[String] {
+  val encoding =
+    if(props == null)
+      "UTF8"
+    else
+      props.getString("serializer.encoding", "UTF8")
+
+  def fromBytes(bytes: Array[Byte]): String = {
+
+    val rate: Float = 0.5f * 1.05f
+
+    val b4: Int = bytes(bytes.length - 4)
+    val b3: Int = bytes(bytes.length - 3)
+    val b2: Int = bytes(bytes.length - 2)
+    val b1: Int = bytes(bytes.length - 1)
+    val estSize: Int = (b1 << 24) | (b2 << 16) + (b3 << 8) + b4
+
+    val out = new ByteBufferOutputStream(ByteBuffer.allocate(estSize + 30))
+    val in = new GZIPInputStream(new ByteArrayInputStream(bytes))
+
+    var readCount: Int = 0
+    val buffer: Array[Byte] = Array.ofDim[Byte](1024)
+
+    while({
+      readCount = in.read(buffer);
+      readCount != -1
+    }) {
+      out.write(buffer, 0, readCount)
+    }
+
+    out.buffer().flip
+    val result : Array[Byte] = Array.ofDim[Byte](out.buffer().remaining())
+    return new String({out.buffer().get(result,0,result.length); result}, encoding)
+
   }
 }

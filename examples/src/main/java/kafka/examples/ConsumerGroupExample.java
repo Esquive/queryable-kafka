@@ -19,6 +19,11 @@ package kafka.examples;
 import kafka.consumer.ConsumerConfig;
 import kafka.consumer.KafkaStream;
 import kafka.javaapi.consumer.SqlConsumerConnector;
+//import kafka.serializer.Decoder;
+//import kafka.serializer.DefaultDecoder;
+//import kafka.serializer.StringDecoder;
+//import kafka.serializer.StringGzipDecoder;
+//import org.apache.kafka.common.serialization.StringGzipDeserializer;
 
 import java.util.HashMap;
 import java.util.List;
@@ -59,10 +64,8 @@ public class ConsumerGroupExample {
         Map<String, Integer> topicCountMap = new HashMap<String, Integer>();
         topicCountMap.put(topic, new Integer(numThreads));
 
-
-
-        Map<String, List<KafkaStream<byte[], byte[]>>> consumerMap = consumer.createMessageStreams(topicCountMap);
-        List<KafkaStream<byte[], byte[]>> streams = consumerMap.get(topic);
+        Map<String, List<KafkaStream<String, String>>> consumerMap = consumer.createGzipMessageStreams(topicCountMap);
+        List<KafkaStream<String, String>> streams = consumerMap.get(topic);
 
         // now launch all the threads
         //
@@ -82,8 +85,8 @@ public class ConsumerGroupExample {
         props.put("zookeeper.connect", zookeeper);
         props.put("group.id", "testGroup");
         props.put("client.id", "testClient");
-        props.put("zookeeper.session.timeout.ms", "6000");
-        props.put("zookeeper.sync.time.ms", "200");
+        props.put("zookeeper.session.timeout.ms", "60000");
+        props.put("zookeeper.sync.time.ms", "20000");
         props.put("auto.commit.interval.ms", "1000");
 
         return new ConsumerConfig(props);
