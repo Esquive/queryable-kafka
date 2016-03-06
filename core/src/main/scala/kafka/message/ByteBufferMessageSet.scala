@@ -138,6 +138,10 @@ class ByteBufferMessageSet(val buffer: ByteBuffer) extends MessageSet with Loggi
 
   def getBuffer = buffer
 
+  def getChannel: java.nio.channels.FileChannel = null
+  def getEnd: Int = -1
+  def getStart: Int = -1
+
   private def shallowValidBytes: Int = {
     if(shallowValidByteCount < 0) {
       var bytes = 0
@@ -291,5 +295,7 @@ class ByteBufferMessageSet(val buffer: ByteBuffer) extends MessageSet with Loggi
   }
 
   override def hashCode: Int = buffer.hashCode
+
+
 
 }

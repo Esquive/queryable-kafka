@@ -299,6 +299,12 @@ class FileMessageSet private[kafka](@volatile var file: File,
     success
   }
 
+  def getStart() = this.start
+
+  def getEnd() = this.end
+
+  def getChannel() = this.channel
+
 }
 
 object FileMessageSet

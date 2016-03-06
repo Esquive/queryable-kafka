@@ -1,14 +1,15 @@
 package kafka.api
 
-import java.io.{ByteArrayInputStream, InputStreamReader, BufferedReader}
-import java.util
+import java.io._
+import java.nio.ByteBuffer
+import java.nio.channels.{Channels, FileChannel}
 import java.util.Scanner
 import java.util.concurrent.atomic.AtomicLong
-import java.util.regex.Pattern
+import java.util.zip.{GZIPOutputStream, GZIPInputStream}
 
 import kafka.common.TopicAndPartition
 import kafka.message._
-import org.apache.kafka.common.record.ByteBufferInputStream
+import org.apache.commons.io.input.BoundedInputStream
 
 import scala.collection.Map
 import scala.collection.mutable.ListBuffer
@@ -18,6 +19,12 @@ import scala.collection.mutable.ListBuffer
   */
 object FetchRequestQueryApplier {
 
+  /**
+    *
+    * @param topicsAndQueries
+    * @param fetchPartitionData
+    * @param responseCallback
+    */
   def applyQueriesToResponse(topicsAndQueries: Map[String, String],
                              fetchPartitionData: Map[TopicAndPartition, FetchResponsePartitionData],
                              responseCallback: Map[TopicAndPartition, FetchResponsePartitionData] => Unit): Unit = {
@@ -30,92 +37,115 @@ object FetchRequestQueryApplier {
 
       //We rely on the fact that the messages are ordered. Although Threading might be an issue we will see.
       var firstOffset = -1l
-      var compressionCodec: CompressionCodec = null
 
       if (topicsAndQueries.contains(data._1.topic)) {
-      //if (topicsAndQueries.contains("pcmd")) {
 
         //We get the query
         val query = parseQuery(topicsAndQueries.get(data._1.topic).getOrElse("select *"))
-        var init = true
 
-        //For each message we apply the the query: The iterator is used on purpose for automatic decryption of the messageset
-        val wrapperMessages = data._2.messages.iterator
-        while (wrapperMessages.hasNext) {
-          val wrapperMessageAndOffset = wrapperMessages.next
-          val wrapperMessage = wrapperMessageAndOffset.message
-          if(init) {firstOffset = wrapperMessageAndOffset.offset; init=false}
-          compressionCodec = wrapperMessage.compressionCodec
+        //Get the metadata about messages in the buffer
+        var start = data._2.messages.getStart
+        val end = data._2.messages.getEnd
+        val channel = data._2.messages.getChannel
+        if(start != -1) {
+          while (start < end) {
 
+            //parse the buffer retrieve the message Meta
+            val msgMeta = getNextMessageOffsetKeyValue(start, end, channel)
 
+            if (msgMeta != null) {
 
-          compressionCodec match {
-            case NoCompressionCodec => {
-              newMessages += handleMessage(compressionCodec, wrapperMessageAndOffset,query)
-            }
-            case comp => {
-              val wrapperMessageIt = ByteBufferMessageSet.deepIterator(wrapperMessage)
-              while (wrapperMessageIt.hasNext) {
-                newMessages += handleMessage(compressionCodec, wrapperMessageIt.next(),query)
-              }
+              val key = msgMeta.get(Keys.msgKey).get.asInstanceOf[Array[Byte]]
+              val valueSize = msgMeta.get(Keys.valueSize).get.toString.toInt
+              val valueOffset = msgMeta.get(Keys.valueOffset).get.toString.toInt
+              firstOffset = msgMeta.get(Keys.offset).get.toString.toLong
+              start = msgMeta.get(Keys.nextLocation).get.toString.toInt
 
+              //Set the channel position to start stream from that point
+              channel.position(valueOffset)
+
+              val valueReader = new BufferedReader(new InputStreamReader(new GZIPInputStream(
+                new BoundedInputStream(Channels.newInputStream(channel), valueSize)
+              )))
+
+              newMessages += handleMessage(query, valueReader, key, firstOffset)
+
+              //Close the reader
+//              valueReader.close()
             }
           }
+          queriedResponse.put(data._1, new FetchResponsePartitionData(data._2.error, data._2.hw,
+            new ByteBufferMessageSet(CompressionCodec.getCompressionCodec(0), new AtomicLong(firstOffset), newMessages: _*)))
+          newMessages.clear()
+        } else {
+          queriedResponse.put(data._1, data._2)
         }
-        queriedResponse.put(data._1, new FetchResponsePartitionData(data._2.error, data._2.hw,
-          new ByteBufferMessageSet(compressionCodec, new AtomicLong(firstOffset), newMessages: _*)))
-        newMessages.clear()
       } else {
         queriedResponse.put(data._1, data._2)
       }
     })
+
     responseCallback(queriedResponse.toMap)
   }
 
-  private def handleMessage(compressionCodec: CompressionCodec, messageAndOffset: MessageAndOffset, query: QueryPlan): Message = {
-    val message = messageAndOffset.message
-    val firstOffset = messageAndOffset.offset
+  /**
+    *
+    * @param query
+    * @param reader
+    * @param key
+    * @param offset
+    * @return
+    */
+  private def handleMessage(query: QueryPlan, reader: Reader, key: Array[Byte], offset: Long): Message = {
 
-    val reader = new BufferedReader(new InputStreamReader(new ByteBufferInputStream(message.payload)))
-    val queriedMessage = new StringBuilder()
     var line: String = null
     var hadPreviousLine = false
+    val result = new ByteArrayOutputStream(1024*1024)
+    val out = new GZIPOutputStream(result)
+    val queriedMessage = new StringBuilder()
     while ( {
-      line = reader.readLine();
+      line = reader.asInstanceOf[BufferedReader].readLine();
       line != null
     }) {
       if (hadPreviousLine) {
-        queriedMessage.append(System.lineSeparator())
+        out.write(System.lineSeparator().getBytes())
       }
 
-      //TODO: Add a separator in the query config
-    hadPreviousLine = applyQuery(line,query,queriedMessage)
+      //TODO: Add separator in config
+      val result = applyQuery(line, query)
+      if(result.length >0)
+      {
+        out.write(result)
+        hadPreviousLine = true
+      }
+      else
+        hadPreviousLine = false
 
     }
+    out.flush()
+    out.close()
 
-    //Remove the last new line should there be one.
-//    if(queriedMessage.last.equals(System.lineSeparator()))(queriedMessage.deleteCharAt(queriedMessage.length - 1))
-    if(queriedMessage.last.toString.equals(System.lineSeparator())){queriedMessage.deleteCharAt(queriedMessage.length - 1)}
-
-    //TODO: See how I can get rid of more resources.
-    //Close the reader
-    reader.close()
-    //Put a new message into that place.
-    val messageBytes = queriedMessage.toString.getBytes
-    new Message(messageBytes, util.Arrays.copyOfRange(message.buffer.array(), Message.KeyOffset, message.keySize), message.compressionCodec, 0, messageBytes.length)
+    new Message(result.toByteArray, key, CompressionCodec.getCompressionCodec(0))
   }
 
-  private def applyQuery(line: String, queryPlan: QueryPlan, result: StringBuilder) : Boolean = {
+
+  /**
+    *
+    * @param line
+    * @param queryPlan
+    * @return
+    */
+  private def applyQuery(line: String, queryPlan: QueryPlan): Array[Byte] = {
 
     var keep = true
     val columns = line.split(";")
+    val result = new StringBuilder()
 
-
-      //columns(queryPlan.conditionColumn)
+    //columns(queryPlan.conditionColumn)
 
     //Check the criteria
 
-    if(queryPlan.conditionOperation != null) {
+    if (queryPlan.conditionOperation != null) {
       queryPlan.conditionOperation match {
         case "=" => {
           if (!(columns(queryPlan.conditionColumn).toInt == queryPlan.conditionValue)) {
@@ -125,24 +155,24 @@ object FetchRequestQueryApplier {
       }
     }
 
-    if(keep)
-    {
-//          for(i <- 0 until queryPlan.columns.length){
-//             result.append(columns(i))
-//             if( !(i == queryPlan.columns.length) ) { result.append(";")}
-//          }
+    if (keep) {
+      //          for(i <- 0 until queryPlan.columns.length){
+      //             result.append(columns(i))
+      //             if( !(i == queryPlan.columns.length) ) { result.append(";")}
+      //          }
 
-      for(i<-queryPlan.columns){
+      for (i <- queryPlan.columns) {
         result.append(columns(i)).append(";")
       }
 
     }
 
-    return keep
+    return result.toString.getBytes()
   }
 
   /**
     * A very simple Query parser
+    *
     * @param query
     * @return
     */
@@ -176,9 +206,98 @@ object FetchRequestQueryApplier {
     QueryPlan(columns.toList.sorted, conditionColumn, conditionValue, "=")
   }
 
+
+  /**
+    *
+    * @param start
+    * @param end
+    * @param channel
+    * @return
+    */
+  private def getNextMessageOffsetKeyValue(start: Int, end: Int, channel: FileChannel): Map[String, Any] = {
+    //Set the location
+    var location = start
+    val sizeOffsetBuffer = ByteBuffer.allocate(12)
+
+    //If the location is bigger as the end return
+    if (location >= end)
+      return null
+
+    // read the size of the item
+    sizeOffsetBuffer.rewind()
+    channel.read(sizeOffsetBuffer, location)
+    if (sizeOffsetBuffer.hasRemaining)
+      return null
+
+    sizeOffsetBuffer.rewind()
+    val offset = sizeOffsetBuffer.getLong()
+    val size = sizeOffsetBuffer.getInt()
+    if (size < Message.MinHeaderSize)
+      return null
+    //    if(size > maxMessageSize)
+    //      throw new CorruptRecordException("Message size exceeds the largest allowable message size (%d).".format(maxMessageSize))
+
+    //Read the KeySize
+    val sizeBuffer = ByteBuffer.allocate(Message.KeySizeLength)
+    channel.read(sizeBuffer, location + 12 + Message.KeySizeOffset)
+    if (sizeBuffer.hasRemaining)
+      return null
+    sizeBuffer.rewind()
+    val keySize = sizeBuffer.getInt()
+
+    //Read the key
+    val keyBuffer = ByteBuffer.allocate(keySize)
+    channel.read(keyBuffer, location + 12 + Message.KeyOffset)
+    if (keyBuffer.hasRemaining)
+      return null
+    keyBuffer.rewind()
+    val keyBytes = Array.ofDim[Byte](keySize)
+    keyBuffer.get(keyBytes)
+
+    //Read the value size
+    val valueSizeOffset = location + 12 + Message.KeyOffset + keySize
+    sizeBuffer.rewind()
+    channel.read(sizeBuffer, valueSizeOffset)
+    if (sizeBuffer.hasRemaining)
+      return null
+    sizeBuffer.rewind()
+    val valueSize = sizeBuffer.getInt()
+
+    //Read the uncompressed file
+    sizeBuffer.rewind()
+    channel.read(sizeBuffer, 12 + size - 4)
+    if (sizeBuffer.hasRemaining)
+      return null
+    sizeBuffer.rewind()
+    val fullSize = sizeBuffer.getInt()
+
+    //TODO: How about reading the ful buffer here?
+
+    // increment the location and return the item
+    location += size + 12
+    Map("KeySize" -> keySize, "ValueSize" -> valueSize, "nextLocation" -> location,
+      "key" -> keyBytes, Keys.valueOffset -> (valueSizeOffset + Message.ValueSizeLength),
+      Keys.fullSzie -> fullSize, Keys.offset -> offset)
+  }
+
+
+
+
+  private case object Keys {
+    val keySize = "KeySize"
+    val valueSize = "ValueSize"
+    val nextLocation = "nextLocation"
+    val msgKey = "key"
+    val valueOffset = "valueOffset"
+    val fullSzie = "fullSize"
+    val offset = "offset"
+  }
+
   private case class QueryPlan(columns: List[Int], conditionColumn: Int, conditionValue: Int, conditionOperation: String)
 
 }
+
+
 
 
 

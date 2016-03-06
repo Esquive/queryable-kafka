@@ -81,6 +81,12 @@ abstract class MessageSet extends Iterable[MessageAndOffset] {
    */
   def sizeInBytes: Int
 
+  def getStart: Int
+
+  def getEnd: Int
+
+  def getChannel : FileChannel
+
   /**
    * Print this message set's contents. If the message set has more than 100 messages, just
    * print the first 100.
