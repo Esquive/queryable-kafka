@@ -305,6 +305,8 @@ class FileMessageSet private[kafka](@volatile var file: File,
 
   def getChannel() = this.channel
 
+  def getFile() = this.file
+
 }
 
 object FileMessageSet

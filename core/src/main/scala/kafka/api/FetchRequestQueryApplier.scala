@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.zip.{GZIPOutputStream, GZIPInputStream}
 
 import kafka.common.TopicAndPartition
+import kafka.log.FileMessageSet
 import kafka.message._
 import org.apache.commons.io.input.BoundedInputStream
 
@@ -35,53 +36,58 @@ object FetchRequestQueryApplier {
     //For each topic we check if we have a query for it.
     fetchPartitionData.foreach(data => {
 
-      //We rely on the fact that the messages are ordered. Although Threading might be an issue we will see.
-      var firstOffset = -1l
+      if (data._2.messages.isInstanceOf[FileMessageSet]) {
 
-      if (topicsAndQueries.contains(data._1.topic)) {
+        //We rely on the fact that the messages are ordered. Although Threading might be an issue we will see.
+        var firstOffset = -1l
+        if (topicsAndQueries.contains(data._1.topic)) {
 
-        //We get the query
-        val query = parseQuery(topicsAndQueries.get(data._1.topic).getOrElse("select *"))
+          //We get the query
+          val query = parseQuery(topicsAndQueries.get(data._1.topic).getOrElse("select *"))
 
-        //Get the metadata about messages in the buffer
-        var start = data._2.messages.getStart
-        val end = data._2.messages.getEnd
-        val channel = data._2.messages.getChannel
-        if(start != -1) {
-          while (start < end) {
+          //Get the metadata about messages in the buffer
+          var start = data._2.messages.getStart
+          val end = data._2.messages.getEnd
+//          val channel = data._2.messages.getChannel
+          val channel = FileMessageSet.openChannel(data._2.messages.asInstanceOf[FileMessageSet].getFile(),true,true)
 
-            //parse the buffer retrieve the message Meta
-            val msgMeta = getNextMessageOffsetKeyValue(start, end, channel)
+          if (start != -1) {
+            while (start < end) {
 
-            if (msgMeta != null) {
+              //parse the buffer retrieve the message Meta
+              val msgMeta = getNextMessageOffsetKeyValue(start, end, channel)
 
-              val key = msgMeta.get(Keys.msgKey).get.asInstanceOf[Array[Byte]]
-              val valueSize = msgMeta.get(Keys.valueSize).get.toString.toInt
-              val valueOffset = msgMeta.get(Keys.valueOffset).get.toString.toInt
-              firstOffset = msgMeta.get(Keys.offset).get.toString.toLong
-              start = msgMeta.get(Keys.nextLocation).get.toString.toInt
+              if (msgMeta != null) {
 
-              //Set the channel position to start stream from that point
-              channel.position(valueOffset)
+                val key = msgMeta.get(Keys.msgKey).get.asInstanceOf[Array[Byte]]
+                val valueSize = msgMeta.get(Keys.valueSize).get.toString.toInt
+                val valueOffset = msgMeta.get(Keys.valueOffset).get.toString.toInt
+                firstOffset = msgMeta.get(Keys.offset).get.toString.toLong
+                start = msgMeta.get(Keys.nextLocation).get.toString.toInt
 
-              val valueReader = new BufferedReader(new InputStreamReader(new GZIPInputStream(
-                new BoundedInputStream(Channels.newInputStream(channel), valueSize)
-              )))
+                //Set the channel position to start stream from that point
+                channel.position(valueOffset)
 
-              newMessages += handleMessage(query, valueReader, key, firstOffset)
+                val valueReader = new BufferedReader(new InputStreamReader(new GZIPInputStream(
+                  new BoundedInputStream(Channels.newInputStream(channel), valueSize)
+                )))
 
-              //Close the reader
-//              valueReader.close()
+                newMessages += handleMessage(query, valueReader, key, firstOffset)
+
+                //Close the reader
+                //              valueReader.close()
+              }
             }
+            queriedResponse.put(data._1, new FetchResponsePartitionData(data._2.error, data._2.hw,
+              new ByteBufferMessageSet(CompressionCodec.getCompressionCodec(0), new AtomicLong(firstOffset), newMessages: _*)))
+            channel.close()
+            newMessages.clear()
+          } else {
+            queriedResponse.put(data._1, data._2)
           }
-          queriedResponse.put(data._1, new FetchResponsePartitionData(data._2.error, data._2.hw,
-            new ByteBufferMessageSet(CompressionCodec.getCompressionCodec(0), new AtomicLong(firstOffset), newMessages: _*)))
-          newMessages.clear()
         } else {
           queriedResponse.put(data._1, data._2)
         }
-      } else {
-        queriedResponse.put(data._1, data._2)
       }
     })
 
@@ -100,9 +106,8 @@ object FetchRequestQueryApplier {
 
     var line: String = null
     var hadPreviousLine = false
-    val result = new ByteArrayOutputStream(1024*1024)
+    val result = new ByteArrayOutputStream()
     val out = new GZIPOutputStream(result)
-    val queriedMessage = new StringBuilder()
     while ( {
       line = reader.asInstanceOf[BufferedReader].readLine();
       line != null
@@ -113,8 +118,7 @@ object FetchRequestQueryApplier {
 
       //TODO: Add separator in config
       val result = applyQuery(line, query)
-      if(result.length >0)
-      {
+      if (result.length > 0) {
         out.write(result)
         hadPreviousLine = true
       }
@@ -269,7 +273,13 @@ object FetchRequestQueryApplier {
     if (sizeBuffer.hasRemaining)
       return null
     sizeBuffer.rewind()
-    val fullSize = sizeBuffer.getInt()
+    val sizeBytes = Array.ofDim[Byte](4)
+    sizeBuffer.get(sizeBytes)
+    val b4: Int = (sizeBytes(0) & 0xFF)
+    val b3: Int = (sizeBytes(1) & 0xFF)
+    val b2: Int = (sizeBytes(2) & 0xFF)
+    val b1: Int = (sizeBytes(3) & 0xFF)
+    val fullSize: Int = (b1 << 24) | (b2 << 16) + (b3 << 8) + b4
 
     //TODO: How about reading the ful buffer here?
 
@@ -279,8 +289,6 @@ object FetchRequestQueryApplier {
       "key" -> keyBytes, Keys.valueOffset -> (valueSizeOffset + Message.ValueSizeLength),
       Keys.fullSzie -> fullSize, Keys.offset -> offset)
   }
-
-
 
 
   private case object Keys {
