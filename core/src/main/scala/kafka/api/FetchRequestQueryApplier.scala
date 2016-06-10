@@ -108,23 +108,28 @@ object FetchRequestQueryApplier {
     var hadPreviousLine = false
     val result = new ByteArrayOutputStream()
     val out = new GZIPOutputStream(result)
+    var first = true
     while ( {
       line = reader.asInstanceOf[BufferedReader].readLine();
       line != null
     }) {
-      if (hadPreviousLine) {
-        out.write(System.lineSeparator().getBytes())
-      }
+      if(!first) {
+        if (hadPreviousLine) {
+          out.write(System.lineSeparator().getBytes())
+        }
 
-      //TODO: Add separator in config
-      val result = applyQuery(line, query)
-      if (result.length > 0) {
-        out.write(result)
-        hadPreviousLine = true
+        //TODO: Add separator in config
+        val result = applyQuery(line, query)
+        if (result.length > 0) {
+          out.write(result)
+          hadPreviousLine = true
+        }
+        else
+          hadPreviousLine = false
       }
-      else
-        hadPreviousLine = false
-
+      else{
+        first = false
+      }
     }
     out.flush()
     out.close()
@@ -136,7 +141,7 @@ object FetchRequestQueryApplier {
   /**
     *
     * @param line
-    * @param queryPlan
+    * @param queryPlan`
     * @return
     */
   private def applyQuery(line: String, queryPlan: QueryPlan): Array[Byte] = {

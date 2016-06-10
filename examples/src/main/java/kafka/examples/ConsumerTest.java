@@ -32,7 +32,7 @@ public class ConsumerTest implements Runnable {
         ConsumerIterator<String, String> it = stream.iterator();
         while (true) {
             if (it.hasNext()) {
-                System.out.println("Thread " + threadNumber + ": " + new String(it.next().message()));
+                System.out.println("Thread " + threadNumber + ": " + new String(it.next().key()));
             }
         }
 //        System.out.println("Shutting down Thread: " + threadNumber);

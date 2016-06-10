@@ -217,7 +217,7 @@ private[kafka] class SqlConsumerConnector(val config: ConsumerConfig,
     val dirs = new ZKGroupDirs(config.groupId)
     val sqlDirs = new ZKSqlQueryDirs(config.clientId)
     registerConsumerInZK(dirs, consumerIdString, topicCount)
-    registerConsumerSqlQueries(sqlDirs,consumerIdString, topicsAndQueries)
+    //registerConsumerSqlQueries(sqlDirs,consumerIdString, topicsAndQueries)
 
     reinitializeConsumer(topicCount,queuesAndStreams)
 
@@ -487,7 +487,7 @@ private[kafka] class SqlConsumerConnector(val config: ConsumerConfig,
       info("ZK expired; release old broker parition ownership; re-register consumer " + consumerIdString)
       loadBalancerListener.resetState()
       registerConsumerInZK(dirs, consumerIdString, topicCount)
-      registerConsumerSqlQueries(sqlDirs,consumerIdString,topicsAndQueries)
+      //registerConsumerSqlQueries(sqlDirs,consumerIdString,topicsAndQueries)
       // explicitly trigger load balancing for this consumer
       loadBalancerListener.syncedRebalance()
       // There is no need to resubscribe to child and state changes.

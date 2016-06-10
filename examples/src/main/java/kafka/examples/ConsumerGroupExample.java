@@ -86,7 +86,7 @@ public class ConsumerGroupExample {
         props.put("group.id", "testGroup");
         props.put("client.id", "testClient");
         props.put("zookeeper.session.timeout.ms", "60000");
-        props.put("zookeeper.sync.time.ms", "20000");
+        props.put("zookeeper.sync.time.ms", "60000");
         props.put("auto.commit.interval.ms", "1000");
 
         return new ConsumerConfig(props);

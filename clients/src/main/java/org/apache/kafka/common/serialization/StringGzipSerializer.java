@@ -41,6 +41,7 @@ public class StringGzipSerializer implements Serializer<String> {
                 value = new ByteBufferOutputStream(ByteBuffer.allocate(comLength));
 
                 out = new GZIPOutputStream(value);
+
                 out.write(data.getBytes(encoding));
                 out.flush();
                 out.close();
