@@ -89,6 +89,7 @@ class KafkaApis(val requestChannel: RequestChannel,
         case ApiKeys.SYNC_GROUP => handleSyncGroupRequest(request)
         case ApiKeys.DESCRIBE_GROUPS => handleDescribeGroupRequest(request)
         case ApiKeys.LIST_GROUPS => handleListGroupsRequest(request)
+        case ApiKeys.PRODUCE_LARGE => handleProducerLargeRequest(request)
         case requestId => throw new KafkaException("Unknown api code " + requestId)
       }
     } catch {
@@ -397,6 +398,12 @@ class KafkaApis(val requestChannel: RequestChannel,
       produceRequest.emptyData()
     }
   }
+
+
+  def handleProducerLargeRequest(request: RequestChannel.Request): Unit ={
+    val produceRequest = request.requestObj.asInstanceOf[ProducerRequest]
+  }
+
 
   /**
    * Handle a fetch request

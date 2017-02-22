@@ -20,13 +20,14 @@ package kafka.examples;
 
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+
 //import org.apache.kafka.clients.producer.ProducerConfig;
 
 import java.util.Properties;
 //import java.util.UUID;
-import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 public class Producer extends Thread {
@@ -38,9 +39,11 @@ public class Producer extends Thread {
         Properties props = new Properties();
         props.put("bootstrap.servers", "localhost:9092");
         props.put("client.id", "DemoProducer");
-//        props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip");
+        props.put(ProducerConfig.METADATA_FETCH_TIMEOUT_CONFIG, 5000);
+        props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "none");
+        props.put(ProducerConfig.BATCH_SIZE_CONFIG, 1);
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("value.serializer", "org.apache.kafka.common.serialization.StringGzipSerializer");
+        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         producer = new KafkaProducer<>(props);
         this.topic = topic;
         this.isAsync = isAsync;
@@ -48,16 +51,15 @@ public class Producer extends Thread {
 
     public void run() {
         String messageNo = null;
-        while (true) {
-            messageNo = UUID.randomUUID().toString();
-            String messageStr = "HELLO WOLRD THIS IS THE MESSAGE";
-            messageStr += messageStr;
-            messageStr += messageStr;
+        int i = 0;
+        while (i < 1) {
+            messageNo = "mskey";
+            String messageStr = "hello world";
+            //messageStr += messageStr;
+            //messageStr += messageStr;
             long startTime = System.currentTimeMillis();
             if (isAsync) { // Send asynchronously
-//                producer.send(new ProducerRecord<String, String>(topic,
-//                    messageNo,
-//                    messageStr), new DemoCallBack(startTime, messageNo, messageStr));
+                producer.send(new ProducerRecord<String, String>(topic, messageNo, messageStr), new DemoCallBack(startTime, messageNo, messageStr));
             } else { // Send synchronously
                 try {
                     producer.send(new ProducerRecord<String, String>(topic,
@@ -70,12 +72,12 @@ public class Producer extends Thread {
                     e.printStackTrace();
                 }
             }
-//            ++messageNo;
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+//            try {
+//                Thread.sleep(1000);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+            i++;
         }
     }
 }
@@ -83,10 +85,10 @@ public class Producer extends Thread {
 class DemoCallBack implements Callback {
 
     private long startTime;
-    private int key;
+    private String key;
     private String message;
 
-    public DemoCallBack(long startTime, int key, String message) {
+    public DemoCallBack(long startTime, String key, String message) {
         this.startTime = startTime;
         this.key = key;
         this.message = message;
@@ -104,10 +106,10 @@ class DemoCallBack implements Callback {
     public void onCompletion(RecordMetadata metadata, Exception exception) {
         long elapsedTime = System.currentTimeMillis() - startTime;
         if (metadata != null) {
-//            System.out.println(
-//                "message(" + key + ", " + message + ") sent to partition(" + metadata.partition() +
-//                    "), " +
-//                    "offset(" + metadata.offset() + ") in " + elapsedTime + " ms");
+            System.out.println(
+                "message(" + key + ", " + message + ") sent to partition(" + metadata.partition() +
+                    "), " +
+                    "offset(" + metadata.offset() + ") in " + elapsedTime + " ms");
         } else {
             exception.printStackTrace();
         }

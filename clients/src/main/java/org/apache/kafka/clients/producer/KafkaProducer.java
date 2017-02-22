@@ -23,6 +23,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.zip.GZIPInputStream;
 
 import org.apache.kafka.clients.ClientUtils;
 import org.apache.kafka.clients.Metadata;
@@ -462,6 +463,8 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             throw e;
         }
     }
+
+    GZIPInputStream
 
     /**
      * Wait for cluster metadata including partitions for the given topic to be available.
